@@ -1,0 +1,41 @@
+@use '../shared/typography';
+@use 'composition';
+@use '../tokens/scss/layout';
+@use '../shared/navigation';
+@use '../shared/optical';
+@layer world {
+  .frame__footer { background: var(--color-paper); }
+}
+
+@layer world {
+  .publication-index a:focus-visible { box-shadow: 0 0 var(--world-illumination-emission-spread) var(--world-illumination-emission); }
+  .publication-index > li { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: baseline; gap: var(--space-3) var(--space-5); border-inline-start: var(--stroke-hair) solid var(--color-line); padding-inline-start: var(--space-4); }
+  // Code and display maths stay orthogonal: square-cut brackets on a flat bed,
+  // so Base's rounded optical contour and its sheen stop here.
+  .publication-body pre { border-inline: var(--stroke-lit-edge) solid var(--color-strong-line); border-radius: 0; box-shadow: none; }
+  .publication-body p:has(> math[display='block']):is([tabindex],:focus-visible) { border-radius: 0; }
+  .publication-body figure:not([class]) { --prose-caption-gap: var(--world-figure-caption-gap); margin-block: var(--world-figure-interval); padding: var(--space-5); @include optical.frame; background: var(--color-sheet); }
+  .publication-body th { background: var(--color-tint); }
+  .reading-notes { border-inline: var(--stroke-hair) solid var(--color-strong-line); padding-inline: var(--space-5); }
+  .reading-notes[open] { border-inline-start-color: var(--color-signal); }
+  .reading-notes[open] > summary { color: var(--color-ink); }
+  @media (width < layout.$layout-breakpoint-navigation) {
+    .publication-index > li { grid-template-columns: minmax(0,1fr); gap: var(--space-2); }
+    .publication-body figure:not([class]) { padding-inline: var(--prose-figure-padding-inline,var(--space-4)); }
+    .reading-notes { padding-inline: var(--space-4); }
+  }
+
+}
+
+// One capsule recipe is shared with the other opted-in world.
+@layer world {
+  .frame__header { --navigation-ink: var(--color-ink); --navigation-paper: var(--color-paper); --navigation-focus: var(--color-focus); }
+  @include navigation.capsule($ink: var(--navigation-ink), $paper: var(--navigation-paper), $focus: var(--navigation-focus));
+}
+
+@layer world {
+  // The command surface uses this world's anodised register; reading remains on stock.
+  .shell__dialog { @include optical.command-register; }
+  .control--secondary { --control-secondary-border: var(--color-line); }
+  .shell__tenant input[type='search'] { background: transparent; }
+}

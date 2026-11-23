@@ -1,0 +1,18 @@
+<section class="research-comparison">
+  <div class="research-comparison__intro">{{ component.body.html | safe }}</div>
+  <figure class="research-comparison__figure">
+  <table>
+    <thead><tr><th scope="col">{{ component.arguments.source }}</th><th scope="col">{{ component.arguments.summary }}</th><th scope="col">{{ component.arguments.question }}</th></tr></thead>
+    <tbody>
+    {% for case in component.arguments.cases %}
+      <tr>
+        <th scope="row"><code>{{ case.state }}</code></th>
+        {% if loop.first %}<td class="research-comparison__shared" rowspan="{{ component.arguments.cases | length }}"><code>{{ component.arguments.retained }}</code></td>{% endif %}
+        <td class="research-comparison__answer">{{ case.answer }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <figcaption class="research-comparison__caption">{{ component.arguments.caption }}</figcaption>
+  </figure>
+</section>

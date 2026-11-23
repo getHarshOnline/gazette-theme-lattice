@@ -1,0 +1,87 @@
+format: gazette-landing/v1
+template: lattice/research.html
+content:
+  id: page:research-relations
+  site: site:reading
+  title: Relations worth examining
+  lifecycle: draft
+  language: en
+  route:
+    path: /research-relations/
+  structure:
+    kind: page
+    family:
+      kind: project
+sections:
+- component: page-opening
+  heading: {level: 1, text: Relations worth examining}
+  arguments: {layout: stacked}
+  body: |
+    Neutral specimens hold supplied relationships without proposing an experimental result.
+- component: project-explanation
+  heading: {level: 2, text: A boundary contains an implementation}
+  sections:
+  - component: research-boundary
+    arguments:
+      boundary_label: Measurement interface
+      surfaces: [Read an observation, Declare a unit, Retain the record]
+      implementation_label: Replaceable <sensor>
+      implementation: The sensor can change while the observation interface stays explicit.
+- component: project-explanation
+  heading: {level: 2, text: A sample reaches a review}
+  sections:
+  - component: process-path
+    arguments: {label: A sample reaches a review}
+    sections:
+    - component: process-step
+      heading: {level: 3, text: Collect a sample}
+      body: Retain the stated conditions.
+    - component: process-step
+      heading: {level: 3, text: Examine the sample}
+      body: Carry the record into analysis.
+    - component: process-step
+      heading: {level: 3, text: Review the account}
+      body: Examine the analysis and its limitations.
+- component: project-explanation
+  heading: {level: 2, text: A shorter dependency}
+  sections:
+  - component: process-path
+    arguments: {label: A shorter dependency}
+    sections:
+    - component: process-step
+      heading: {level: 3, text: Record the question}
+      body: Keep enough context for another person.
+    - component: process-step
+      heading: {level: 3, text: Continue the inquiry}
+      body: Use the record to examine the next condition.
+- component: project-explanation
+  heading: {level: 2, text: Alternative routes share one comparison}
+  sections:
+  - component: research-alternatives
+    arguments:
+      candidates:
+      - {title: A direct decoding route, body: Use the supplied representation directly.}
+      - {title: A transformed decoding route, body: Transform the representation before decoding.}
+    body: |
+      Both routes need the same declared task and a complete account of preparation cost.
+- component: project-explanation
+  heading: {level: 2, text: Separate two controlled changes}
+  sections:
+  - component: research-controls
+    arguments:
+      held_label: Keep fixed
+      changed_label: Change
+      cases:
+      - {question: "What changes with temperature?", held: The vessel and sample., changed: The temperature.}
+      - {question: "What changes with the vessel?", held: The temperature and sample., changed: The vessel.}
+- component: project-explanation
+  heading: {level: 2, text: A premise and limitation stay distinct}
+  sections:
+  - component: research-register
+    heading: {level: 3, text: A stated premise}
+    body: |
+      This register carries the supplied explanatory premise.
+  - component: research-register
+    heading: {level: 3, text: A stated limitation}
+    body: |
+      The limitation stays alongside its premise without implying an experimental result.

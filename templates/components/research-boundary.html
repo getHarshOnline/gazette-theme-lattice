@@ -1,0 +1,8 @@
+<section class="research-boundary">
+  <h3 class="research-boundary__title">{{ component.arguments.boundary_label }}</h3>
+  <ul class="research-boundary__surfaces">{% for surface in component.arguments.surfaces %}<li>{{ surface }}</li>{% endfor %}</ul>
+  <section class="research-boundary__implementation">
+    <h4>{{ component.arguments.implementation_label }}</h4>
+    <p>{{ component.arguments.implementation }}</p>
+  </section>
+</section>

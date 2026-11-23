@@ -1,0 +1,11 @@
+<section class="research-controls">
+{% for case in component.arguments.cases %}
+  <section class="research-controls__case">
+    <h3>{{ case.question }}</h3>
+    <dl>
+      <div><dt>{{ component.arguments.held_label }}</dt><dd>{{ case.held }}</dd></div>
+      <div><dt>{{ component.arguments.changed_label }}</dt><dd>{{ case.changed }}</dd></div>
+    </dl>
+  </section>
+{% endfor %}
+</section>

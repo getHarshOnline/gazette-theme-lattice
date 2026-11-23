@@ -1,0 +1,139 @@
+package = "theme:lattice"
+namespace = "lattice"
+templates = "templates"
+render = { page = "page.html", alias = "alias.html", graph = "graph.html", not_found = "not-found.html", social_card = { template = "social-card.html", resource_requirements = ["stylesheet:social-card", "module:social-card-media"], width = 1200, height = 630, media_selector = '#description .relation-still img', media_kind = "image" } }
+browser_theme_colors = { light = "#edf0ee", dark = "#141b20" }
+resource_requirements = ["stylesheet:world-tokens", "font:reading", "font:reading-italic", "font:system", "font:display", "stylesheet:world"]
+
+[[dependencies]]
+package = "theme:base"
+
+[[resources]]
+id = "stylesheet:world-tokens"
+inputs = ["tokens/world.css"]
+build = { kind = "stylesheet", entry = "tokens/world.css" }
+
+[[resources]]
+id = "stylesheet:world"
+inputs = ["styles/world.scss", "shared/_typography.scss", "shared/_navigation.scss", "shared/_optical.scss", "styles/composition.scss", "tokens/scss/_layout.scss"]
+build = { kind = "stylesheet", entry = "styles/world.scss" }
+
+[[resources]]
+id = "font:reading-italic"
+inputs = ["instrument-sans-italic-latin.woff2"]
+build = { kind = "woff2-font", entry = "instrument-sans-italic-latin.woff2" }
+
+[[resources]]
+id = "font:reading"
+inputs = ["instrument-sans-latin.woff2"]
+build = { kind = "woff2-font", entry = "instrument-sans-latin.woff2" }
+
+[[resources]]
+id = "font:system"
+inputs = ["martian-mono-latin.woff2"]
+build = { kind = "woff2-font", entry = "martian-mono-latin.woff2" }
+
+[[resources]]
+id = "font:display"
+inputs = ["ibm-plex-sans-latin.woff2"]
+build = { kind = "woff2-font", entry = "ibm-plex-sans-latin.woff2" }
+
+
+[components.inquiry-field]
+template = "components/inquiry-field.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.inquiry-copy]
+template = "components/inquiry-copy.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.relation-sequence]
+template = "components/relation-sequence.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.relation-sequence.interaction]
+module = "module:relation-sequence"
+export = "mount"
+mount = "load"
+
+[[resources]]
+id = "module:relation-sequence"
+inputs = ["scripts/relation-sequence.js", "scripts/relation-renderer.js", "scripts/relation-math.js", "scripts/relation-post.js", "shared/model.mjs", "shared/field.mjs", "shared/shaders.mjs", "shared/flow.mjs", "shared/noise.mjs"]
+build = { kind = "browser-module", entry = "scripts/relation-sequence.js", imports = { "@base/field-sequence" = "module:field-sequence" } }
+
+[components.relation-passage]
+template = "components/relation-passage.html"
+arguments = { type = "object", required = ["anchor", "layout"], additionalProperties = false, properties = { anchor = { type = "string", pattern = "^[a-z][a-z0-9-]*$", description = "Unique page anchor for this passage." }, layout = { type = "string", enum = ["corner", "left", "centre", "closer"], description = "Place the passage copy in the corner, left, centre or closing composition." } } }
+
+[components.relation-copy]
+template = "components/relation-copy.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.relation-still]
+template = "components/relation-still.html"
+arguments = { type = "object", additionalProperties = false }
+
+
+[components.research-section]
+template = "components/research-section.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.research-plate]
+template = "components/research-plate.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.research-reading]
+template = "components/research-reading.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.research-directory]
+template = "components/research-directory.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.research-entry]
+template = "components/research-entry.html"
+arguments = { type = "object", additionalProperties = false }
+
+
+
+[components.research-comparison]
+template = "components/research-comparison.html"
+arguments = { type = "object", required = ["source", "summary", "question", "retained", "cases", "caption"], additionalProperties = false, properties = { source = { type = "string", minLength = 1, description = "Column heading for the source states." }, summary = { type = "string", minLength = 1, description = "Column heading for the description shared by both states." }, question = { type = "string", minLength = 1, description = "Column heading for the question or answer being compared." }, retained = { type = "string", minLength = 1, description = "The shared description displayed once across both rows." }, caption = { type = "string", minLength = 1, description = "Qualification beneath the whole comparison." }, cases = { type = "array", minItems = 2, maxItems = 2, items = { type = "object", required = ["state", "answer"], additionalProperties = false, properties = { state = { type = "string", minLength = 1, description = "Source state shown as code in this row." }, answer = { type = "string", minLength = 1, description = "Answer associated with this source state." } } }, description = "Two source states with their separate answers." } } }
+
+
+[components.relation-title]
+template = "components/relation-title.html"
+arguments = { type = "object", required = ["breaks"], additionalProperties = false, properties = { breaks = { type = "array", maxItems = 8, items = { type = "integer", minimum = 1 }, description = "Word counts at which enhanced title lines end, in increasing order; remaining words form the last line." } } }
+
+[components.relation-note]
+template = "components/relation-note.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.relation-closing]
+template = "components/relation-closing.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.relation-action]
+template = "components/relation-action.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.research-register]
+template = "components/research-register.html"
+arguments = { type = "object", additionalProperties = false }
+
+[components.research-boundary]
+template = "components/research-boundary.html"
+arguments = { type = "object", required = ["boundary_label", "surfaces", "implementation_label", "implementation"], additionalProperties = false, properties = { boundary_label = { type = "string", minLength = 1, description = "Heading naming the boundary around the implementation." }, surfaces = { type = "array", minItems = 2, maxItems = 12, items = { type = "string", minLength = 1 }, description = "Names of the interfaces that remain available around that boundary." }, implementation_label = { type = "string", minLength = 1, description = "Heading naming the implementation inside the boundary." }, implementation = { type = "string", minLength = 1, description = "Explanation of the replaceable implementation." } } }
+
+
+[components.research-alternatives]
+template = "components/research-alternatives.html"
+arguments = { type = "object", required = ["candidates"], additionalProperties = false, properties = { candidates = { type = "array", minItems = 2, maxItems = 8, items = { type = "object", required = ["title", "body"], additionalProperties = false, properties = { title = { type = "string", minLength = 1, description = "Heading naming this candidate." }, body = { type = "string", minLength = 1, description = "Plain text explanation beneath this heading." } } }, description = "Alternatives shown together; the component body supplies their shared consequence." } } }
+
+[components.research-controls]
+template = "components/research-controls.html"
+arguments = { type = "object", required = ["held_label", "changed_label", "cases"], additionalProperties = false, properties = { held_label = { type = "string", minLength = 1, description = "Label for what remains fixed in every case." }, changed_label = { type = "string", minLength = 1, description = "Label for what changes in every case." }, cases = { type = "array", minItems = 2, maxItems = 8, items = { type = "object", required = ["question", "held", "changed"], additionalProperties = false, properties = { question = { type = "string", minLength = 1, description = "Question explored by this case." }, held = { type = "string", minLength = 1, description = "What remains fixed in this case." }, changed = { type = "string", minLength = 1, description = "What changes in this case." } } }, description = "Questions with the conditions held fixed and changed for each one." } } }
+
+[chrome.regions]
+"base:theme-credit" = "Lattice theme"
+"base:theme-repository" = "https://github.com/getHarshOnline/gazette-theme-lattice"

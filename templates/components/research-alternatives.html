@@ -1,0 +1,8 @@
+<section class="research-alternatives">
+  <div class="research-alternatives__candidates">
+  {% for candidate in component.arguments.candidates %}
+    <section class="research-alternatives__candidate"><h3>{{ candidate.title }}</h3><p>{{ candidate.body }}</p></section>
+  {% endfor %}
+  </div>
+  <div class="research-alternatives__common">{{ component.body.html | safe }}</div>
+</section>
