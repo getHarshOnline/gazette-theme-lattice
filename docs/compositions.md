@@ -10,7 +10,7 @@ Authored programme accounts use Base’s shared About anatomy in `docs/page-fami
 
 `research-comparison` places two authored source states beside one retained description and their separate answers. Supply `source`, `summary` and `question` as column labels, `retained` as the shared value, two `cases` with `state` and `answer`, and a `caption`. Its Markdown heading and body explain the example beside the framed table on wide screens. Narrow layouts put that explanation before the table, with the qualification centred beneath it. The native table retains the pair at narrow widths; it computes no result and needs no script. Authors must establish that both cases actually share the supplied description.
 
-Home composes the source-owned continuous field and complete native resting views. [Design decisions](../WORLD.md#why-it-has-this-shape) explain its relationship to analytical and reading surfaces.
+Home composes the source-owned continuous field and complete native resting views. Lattice keeps the last drawn frame while the previous GPU submission finishes, then draws the latest scene state. [Design decisions](../WORLD.md#why-it-has-this-shape) explain its relationship to analytical and reading surfaces.
 
 ## Collection bookmarks
 

@@ -49,9 +49,13 @@
     --color-focus: var(--world-dark-focus);
     --focus-ring-color: var(--world-dark-focus);
   }
-  .relation-still { position: absolute; inset: 0; z-index: -2; }
+  .relation-still { position: absolute; inset: 0; }
   .relation-still > [data-gazette-image-block],.relation-still p,.relation-still img { display: block; margin: 0; inline-size: 100%; block-size: 100%; max-inline-size: none; }
-  .relation-still img { object-fit: cover; }
+  .relation-still img { position: relative; z-index: -2; object-fit: cover; }
+  .relation-still .media-inspection-control {
+    position: absolute; z-index: 2;
+    inset-block-end: var(--space-3); inset-inline-end: var(--space-3);
+  }
   .relation-island[data-island-state='drawn'] { display: grid; block-size: calc(var(--field-distance) + 100svh); }
   .relation-island[data-island-state='drawn'] > [data-gazette-mount] { display: block; grid-area: 1 / 1; position: sticky; top: 0; block-size: 100svh; align-self: start; }
   .relation-island[data-island-state='drawn'] > [data-gazette-mount] canvas { display: block; inline-size: 100%; block-size: 100%; }

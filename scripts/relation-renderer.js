@@ -34,6 +34,7 @@ void main(){
  * intro, smoothed pointerX/Y, decayed velocity, damped cameraX/Y/Z and streamOpacity;
  * pointerCameraZ preserves the source's pre-camera-update pointer projection;
  * parallaxX/Y are Base-resolved streamline offsets. No layout reads or owned RAF.
+ * Returns null during shader startup, true while a drawn frame is available, and false if unavailable.
  */
 export function createRelationRenderer(model, options = {}) {
   const lighting = options.lighting;
@@ -46,7 +47,10 @@ export function createRelationRenderer(model, options = {}) {
     stencil: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
   if (!gl) throw new Error('WebGL2 field renderer unavailable');
   let disposed = false, lost = false, initialized = false, lastFrame = null, population = null;
-  let programs = [], buffers = [], textures = [], framebuffers = [], shaders = [];
+  let submittedFrame = null;
+  let programs = [], buffers = [], textures = [], framebuffers = [];
+  const shaders = new Set();
+  let parallelCompile;
   let points, streams, down, up, threshold, composite, triangle, scene, bright, downMips, upMips;
   let width = 0, height = 0;
   const field = model.field;
@@ -57,20 +61,22 @@ export function createRelationRenderer(model, options = {}) {
 
   function release() {
     if (!gl.isContextLost()) {
+      if (submittedFrame) gl.deleteSync(submittedFrame);
       for (const value of shaders) gl.deleteShader(value);
       for (const value of programs) gl.deleteProgram(value.handle);
       for (const value of buffers) gl.deleteBuffer(value);
       for (const value of textures) gl.deleteTexture(value);
       for (const value of framebuffers) gl.deleteFramebuffer(value);
     }
-    shaders = []; programs = []; buffers = []; textures = []; framebuffers = [];
+    submittedFrame = null;
+    shaders.clear(); programs = []; buffers = []; textures = []; framebuffers = [];
+    parallelCompile = null;
     initialized = false; width = height = 0;
   }
   function compile(type, source) {
     const shader = gl.createShader(type);
     if (!shader) throw new Error('Cannot allocate field shader');
-    shaders.push(shader); gl.shaderSource(shader, source); gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || 'Field shader compilation failed');
+    shaders.add(shader); gl.shaderSource(shader, source); gl.compileShader(shader);
     return shader;
   }
   function program(vertex, fragment, prefix = '') {
@@ -79,10 +85,21 @@ export function createRelationRenderer(model, options = {}) {
     const p = { handle, uniforms: new Map(), attributes: [] }; programs.push(p);
     const vs = compile(gl.VERTEX_SHADER, shaderSource(vertex, false, prefix));
     const fs = compile(gl.FRAGMENT_SHADER, shaderSource(fragment, true, prefix));
+    p.shaders = [vs, fs];
     gl.attachShader(handle, vs); gl.attachShader(handle, fs); gl.linkProgram(handle);
-    if (!gl.getProgramParameter(handle, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(handle) || 'Field program link failed');
-    gl.deleteShader(vs); gl.deleteShader(fs); shaders = shaders.filter(s => s !== vs && s !== fs);
     return p;
+  }
+  function validateProgram(p) {
+    if (!gl.getProgramParameter(p.handle, gl.LINK_STATUS)) {
+      const shaderErrors = p.shaders.map(shader => gl.getShaderInfoLog(shader)).filter(Boolean);
+      throw new Error([gl.getProgramInfoLog(p.handle), ...shaderErrors].filter(Boolean).join('\n') || 'Field program link failed');
+    }
+    for (const shader of p.shaders) {
+      gl.detachShader(p.handle, shader);
+      gl.deleteShader(shader);
+      shaders.delete(shader);
+    }
+    p.shaders = [];
   }
   function buffer(data) {
     const value = gl.createBuffer();
@@ -133,22 +150,30 @@ export function createRelationRenderer(model, options = {}) {
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Half-float field framebuffer incomplete');
     t.width = w; t.height = h;
   }
-  function initialize(frame) {
+  function preparePrograms() {
     if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('Half-float field rendering unavailable');
-    if (!population) population = model.pickCounts(frame.size.width, frame.reduced === true);
-    const pointData = model.buildPoints(population.points);
+    parallelCompile = gl.getExtension('KHR_parallel_shader_compile');
     points = program(model.fieldVertexShader, model.fieldFragmentShader, 'uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;\n');
-    for (const [name, data, size] of [['aSeed',pointData.seeds,3],['aRand',pointData.rand,3],['aTone',pointData.tone,1],['aScale',pointData.scale,1]]) attribute(points,name,buffer(data),size);
-    points.count = pointData.count;
-    const paths = model.buildStreamlines(population.lines,population.steps);
     streams = program('attribute vec3 position;\n'+model.streamVertexShader,model.streamFragmentShader,'uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;\n');
-    for (const [name,data,size] of [['position',paths.positions,3],['aAlong',paths.along,1],['aSeed',paths.seed,1],['aTone',paths.tone,1]]) attribute(streams,name,buffer(data),size);
-    streams.count = paths.vertexCount;
-    triangle = buffer(new Float32Array([-1,-1,0,3,-1,0,-1,3,0]));
     down = program(downVertex,downFragment,'#define FRAMEBUFFER_PRECISION_HIGH\n');
     up = program(upVertex,upFragment,'#define FRAMEBUFFER_PRECISION_HIGH\n');
     threshold = program(fullscreenVertex,luminanceFragment,'#define FRAMEBUFFER_PRECISION_HIGH\n#define THRESHOLD\n#define COLOR\n'+luminance);
     composite = program(fullscreenVertex,compositeFragment,'#define VIGNETTE_TECHNIQUE 0\n#define PREMULTIPLY\n');
+  }
+  function programsReady() {
+    if (parallelCompile && !programs.every(p => gl.getProgramParameter(p.handle, parallelCompile.COMPLETION_STATUS_KHR))) return false;
+    for (const p of programs) validateProgram(p);
+    return true;
+  }
+  function initialize(frame) {
+    if (!population) population = model.pickCounts(frame.size.width, frame.reduced === true);
+    const pointData = model.buildPoints(population.points);
+    for (const [name, data, size] of [['aSeed',pointData.seeds,3],['aRand',pointData.rand,3],['aTone',pointData.tone,1],['aScale',pointData.scale,1]]) attribute(points,name,buffer(data),size);
+    points.count = pointData.count;
+    const paths = model.buildStreamlines(population.lines,population.steps);
+    for (const [name,data,size] of [['position',paths.positions,3],['aAlong',paths.along,1],['aSeed',paths.seed,1],['aTone',paths.tone,1]]) attribute(streams,name,buffer(data),size);
+    streams.count = paths.vertexCount;
+    triangle = buffer(new Float32Array([-1,-1,0,3,-1,0,-1,3,0]));
     for (const p of [down,up,threshold,composite]) attribute(p,'position',triangle,3);
     scene = target(); bright = target();
     downMips = Array.from({length:field.bloomLevels},target);
@@ -186,7 +211,24 @@ export function createRelationRenderer(model, options = {}) {
     if (!frame?.size || numeric.some(key=>!Number.isFinite(frame[key])) || !['width','height','pixelRatio'].every(key=>Number.isFinite(frame.size[key])&&frame.size[key]>0)) throw new Error('Complete finite field frame required');
     lastFrame={...frame,size:{...frame.size}};
     try {
-      if(!initialized)initialize(frame);resize(frame);
+      // Keep the last image while the renderer finishes its previous submission.
+      if (submittedFrame) {
+        const status = gl.clientWaitSync(submittedFrame, 0, 0);
+        if (status === gl.TIMEOUT_EXPIRED) return true;
+        gl.deleteSync(submittedFrame);
+        submittedFrame = null;
+        if (status === gl.WAIT_FAILED) throw new Error('Field frame completion check failed');
+      }
+      if (!initialized) {
+        if (!programs.length) {
+          preparePrograms();
+          // Keep the direct startup on drivers without asynchronous completion.
+          if (parallelCompile) return null;
+        }
+        if (!programsReady()) return null;
+        initialize(frame);
+      }
+      resize(frame);
       sampleField(model,frame.index,frame.blend,state);
       perspective(field.cameraFov,width/height,field.cameraNear,field.cameraFar,projection);
       lookAtOrigin(frame.cameraX,frame.cameraY,frame.cameraZ,view);
@@ -211,6 +253,9 @@ export function createRelationRenderer(model, options = {}) {
       uniform(composite,'intensity',lighting.bloomIntensity);uniform(composite,'toneMappingExposure',lighting.exposure);
       uniform(composite,'offset',lighting.vignetteOffset);uniform(composite,'darkness',lighting.vignetteDarkness);
       uniform(composite,'noiseOpacity',lighting.noiseOpacity);uniform(composite,'time',frame.time);draw(composite,gl.TRIANGLES,3);
+      submittedFrame = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      if (!submittedFrame) throw new Error('Cannot track field frame completion');
+      gl.flush();
       return true;
     } catch(error) {release();options.onError?.(error);throw error;}
   }
