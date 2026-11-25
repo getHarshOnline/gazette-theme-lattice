@@ -6,6 +6,7 @@ import { downVertex, downFragment, upVertex, upFragment, luminanceFragment,
 const lightingKeys = ['bloomIntensity', 'bloomThreshold', 'bloomSmoothing', 'bloomRadius',
   'exposure', 'vignetteOffset', 'vignetteDarkness', 'noiseOpacity'];
 const fullscreenVertex = 'in vec3 position;out vec2 vUv;void main(){vUv=position.xy*.5+.5;gl_Position=vec4(position.xy,1.,1.);}';
+const canvasPixelBudget = 1280 * 720;
 const luminance = 'float luminance(vec3 rgb){return dot(rgb,vec3(0.2126,0.7152,0.0722));}\n';
 function shaderSource(source, fragment, prefix = '') {
   source = source.replace(/#include <(?:common|colorspace_fragment)>/g, '')
@@ -49,10 +50,10 @@ export function createRelationRenderer(model, options = {}) {
   let disposed = false, lost = false, initialized = false, lastFrame = null, population = null;
   let submittedFrame = null;
   let programs = [], buffers = [], textures = [], framebuffers = [];
-  const shaders = new Set();
+  const shaders = new Map();
   let parallelCompile;
   let points, streams, down, up, threshold, composite, triangle, scene, bright, downMips, upMips;
-  let width = 0, height = 0;
+  let width = 0, height = 0, density = 1;
   const field = model.field;
   const background = options.ground.map(srgbToLinear);
   const state = { deep: new Float32Array(3), mid: new Float32Array(3), hot: new Float32Array(3) };
@@ -62,7 +63,7 @@ export function createRelationRenderer(model, options = {}) {
   function release() {
     if (!gl.isContextLost()) {
       if (submittedFrame) gl.deleteSync(submittedFrame);
-      for (const value of shaders) gl.deleteShader(value);
+      for (const value of shaders.values()) gl.deleteShader(value);
       for (const value of programs) gl.deleteProgram(value.handle);
       for (const value of buffers) gl.deleteBuffer(value);
       for (const value of textures) gl.deleteTexture(value);
@@ -74,17 +75,20 @@ export function createRelationRenderer(model, options = {}) {
     initialized = false; width = height = 0;
   }
   function compile(type, source) {
+    const key = type + ':' + source;
+    const retained = shaders.get(key);
+    if (retained) return retained;
     const shader = gl.createShader(type);
     if (!shader) throw new Error('Cannot allocate field shader');
-    shaders.add(shader); gl.shaderSource(shader, source); gl.compileShader(shader);
+    shaders.set(key, shader); gl.shaderSource(shader, source); gl.compileShader(shader);
     return shader;
   }
-  function program(vertex, fragment, prefix = '') {
+  function program(vertex, fragment, vertexPrefix = '', fragmentPrefix = vertexPrefix) {
     const handle = gl.createProgram();
     if (!handle) throw new Error('Cannot allocate field program');
     const p = { handle, uniforms: new Map(), attributes: [] }; programs.push(p);
-    const vs = compile(gl.VERTEX_SHADER, shaderSource(vertex, false, prefix));
-    const fs = compile(gl.FRAGMENT_SHADER, shaderSource(fragment, true, prefix));
+    const vs = compile(gl.VERTEX_SHADER, shaderSource(vertex, false, vertexPrefix));
+    const fs = compile(gl.FRAGMENT_SHADER, shaderSource(fragment, true, fragmentPrefix));
     p.shaders = [vs, fs];
     gl.attachShader(handle, vs); gl.attachShader(handle, fs); gl.linkProgram(handle);
     return p;
@@ -94,11 +98,7 @@ export function createRelationRenderer(model, options = {}) {
       const shaderErrors = p.shaders.map(shader => gl.getShaderInfoLog(shader)).filter(Boolean);
       throw new Error([gl.getProgramInfoLog(p.handle), ...shaderErrors].filter(Boolean).join('\n') || 'Field program link failed');
     }
-    for (const shader of p.shaders) {
-      gl.detachShader(p.handle, shader);
-      gl.deleteShader(shader);
-      shaders.delete(shader);
-    }
+    for (const shader of p.shaders) gl.detachShader(p.handle, shader);
     p.shaders = [];
   }
   function buffer(data) {
@@ -157,12 +157,14 @@ export function createRelationRenderer(model, options = {}) {
     streams = program('attribute vec3 position;\n'+model.streamVertexShader,model.streamFragmentShader,'uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;\n');
     down = program(downVertex,downFragment,'#define FRAMEBUFFER_PRECISION_HIGH\n');
     up = program(upVertex,upFragment,'#define FRAMEBUFFER_PRECISION_HIGH\n');
-    threshold = program(fullscreenVertex,luminanceFragment,'#define FRAMEBUFFER_PRECISION_HIGH\n#define THRESHOLD\n#define COLOR\n'+luminance);
-    composite = program(fullscreenVertex,compositeFragment,'#define VIGNETTE_TECHNIQUE 0\n#define PREMULTIPLY\n');
+    threshold = program(fullscreenVertex,luminanceFragment,'','#define FRAMEBUFFER_PRECISION_HIGH\n#define THRESHOLD\n#define COLOR\n'+luminance);
+    composite = program(fullscreenVertex,compositeFragment,'','#define VIGNETTE_TECHNIQUE 0\n#define PREMULTIPLY\n');
   }
   function programsReady() {
     if (parallelCompile && !programs.every(p => gl.getProgramParameter(p.handle, parallelCompile.COMPLETION_STATUS_KHR))) return false;
     for (const p of programs) validateProgram(p);
+    for (const shader of shaders.values()) gl.deleteShader(shader);
+    shaders.clear();
     return true;
   }
   function initialize(frame) {
@@ -182,8 +184,11 @@ export function createRelationRenderer(model, options = {}) {
     initialized = true;
   }
   function resize(frame) {
-    const w = Math.max(1,Math.round(frame.size.width*frame.size.pixelRatio));
-    const h = Math.max(1,Math.round(frame.size.height*frame.size.pixelRatio));
+    // Keep touch scrolling responsive. The field is a background and its reading layers are HTML.
+    const requestedDensity = frame.pointerEnabled === false ? Math.min(1, frame.size.pixelRatio) : frame.size.pixelRatio;
+    density = Math.min(requestedDensity, Math.sqrt(canvasPixelBudget / (frame.size.width * frame.size.height)));
+    const w = Math.max(1, Math.floor(frame.size.width * density));
+    const h = Math.max(1, Math.floor(frame.size.height * density));
     if (w === width && h === height) return;
     const limit = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     if (w > limit || h > limit) throw new Error('Field render size exceeds GPU limit');
@@ -241,7 +246,7 @@ export function createRelationRenderer(model, options = {}) {
       common(points,frame);
       for(const key of field.keys)uniform(points,'u'+key[0].toUpperCase()+key.slice(1),state[key]);
       uniform(points,'uSize',Math.max(field.pointSize.minimum,Math.min(field.pointSize.maximum,frame.size.height/field.pointSize.reference)));
-      uniform(points,'uPixelRatio',Math.min(frame.size.pixelRatio,2));uniform(points,'uVelocity',frame.velocity);uniform(points,'uMouse',pointer);
+      uniform(points,'uPixelRatio',Math.min(density,2));uniform(points,'uVelocity',frame.velocity);uniform(points,'uMouse',pointer);
       uniform(points,'uMouseForce',frame.pointerEnabled===false ? 0 : state.mouseForce);draw(points,gl.POINTS,points.count);
       gl.disable(gl.BLEND);
       bind(bright);use(threshold);texture(threshold,'inputBuffer',scene,0);

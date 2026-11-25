@@ -47,3 +47,7 @@ The authored field supplies its scene contrast and fixed dark action pair; inter
 The authored account uses its source headings while the native document title remains available to navigation and metadata.
 
 Part of [gazette-theme-lattice](../README.md).
+
+## Performance fixture
+
+The relation field fixture selects Lattice’s continuous WebGL region. Base measures callback spacing as the reader moves forward and back within the field. The field draws at up to CSS resolution with a coarse pointer. Its pixel budget is the area of a 1280 × 720 surface, so a wider window does not spend more time drawing the background. Its reading copy and controls remain HTML. The composing workspace chooses the served page and browser conditions. [Theme fixture](../fixtures/performance.json)

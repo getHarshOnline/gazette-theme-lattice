@@ -56,7 +56,7 @@ test('renderer draws source light batches and complete HDR chain without layout 
  const h=harness(),r=createRelationRenderer(model,{lighting,ground});assert.equal(r.canvas,h.canvas);assert.equal(start(r),true);
  assert.deepEqual(h.calls.filter(c=>c[0]==='drawArrays').map(c=>c[1]),['LINES','POINTS',...Array(17).fill('TRIANGLES')]);
  assert.ok(h.calls.some(c=>c[0]==='blendFuncSeparate'&&c.slice(1).join(',')==='SRC_ALPHA,ONE,ONE,ONE'));
- assert.equal(h.canvas.width,1200);assert.equal(h.canvas.height,900);
+ assert.equal(h.canvas.width,1108);assert.equal(h.canvas.height,831);
  assert.equal(h.calls.filter(c=>c[0]==='uniform1f'&&c[1]==='uTime').length,2);
  assert.ok(h.calls.some(c=>c[0]==='uniform1f'&&c[1]==='uTime'&&c[2]===2));
  assert.ok(h.calls.some(c=>c[0]==='uniform1f'&&c[1]==='uVelocity'&&c[2]===.2));
@@ -70,15 +70,26 @@ test('resize reuses geometry and framebuffer identities',()=>{
  const before=h.calls.filter(c=>c[0]==='create').length;r.render({...frame,size:{width:390,height:700,pixelRatio:1}});
  assert.equal(h.calls.filter(c=>c[0]==='create').length,before);assert.equal(h.canvas.width,390);r.dispose();
 });
+test('a coarse-pointer field draws at CSS resolution on a high-density screen',()=>{
+ const h=harness(),r=createRelationRenderer(model,{lighting,ground});start(r);
+ r.render({...frame,pointerEnabled:false,size:{width:390,height:844,pixelRatio:2}});
+ assert.equal(h.canvas.width,390);assert.equal(h.canvas.height,844);r.dispose();
+});
+test('a wide field retains its proportions within the pixel budget',()=>{
+ const h=harness(),r=createRelationRenderer(model,{lighting,ground});start(r);
+ r.render({...frame,size:{width:1920,height:1080,pixelRatio:2}});
+ assert.equal(h.canvas.width,1280);assert.equal(h.canvas.height,720);r.dispose();
+});
 test('loss restores complete GPU resources and the latest explicit frame',()=>{
  const h=harness();let losses=0,restores=0;
  const r=createRelationRenderer(model,{lighting,ground,onLost:()=>losses++,onRestored:()=>restores++});start(r);h.lose();assert.equal(losses,1);assert.equal(r.render(frame),false);
- h.restore();assert.equal(restores,1);assert.equal(r.render(frame),true);assert.ok(h.live.size>0);assert.equal(h.canvas.width,1200);r.dispose();assert.equal(h.live.size,0);
+ h.restore();assert.equal(restores,1);assert.equal(r.render(frame),true);assert.ok(h.live.size>0);assert.equal(h.canvas.width,1108);r.dispose();assert.equal(h.live.size,0);
 });
 test('all programs are queued before polling and draw resources wait for completion',()=>{
  const h=harness({ready:false}),r=createRelationRenderer(model,{lighting,ground});
  assert.equal(r.render(frame),null);
  assert.equal(h.calls.filter(call=>call[0]==='linkProgram').length,6);
+ assert.equal(h.calls.filter(call=>call[0]==='compileShader').length,10,'identical shaders compile once for the programs that share them');
  assert.equal(r.render(frame),null);
  assert.ok(h.calls.some(call=>call[0]==='status'&&call[1]==='completion'));
  assert.ok(!h.calls.some(call=>call[1]==='LINK_STATUS'||call[0]==='bufferData'));

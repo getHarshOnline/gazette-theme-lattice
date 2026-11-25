@@ -1,0 +1,7 @@
+{
+  "home": {
+    "label": "Relation field",
+    "regions": [".relation-sequence"],
+    "minimumRegions": 1
+  }
+}
